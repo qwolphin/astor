@@ -230,17 +230,16 @@ def add_parens(line, maxline, indent, statements=statements, count=count):
             line.append(')')
 
     # That was the easy stuff.  Now for assignments.
-    groups = list(get_assign_groups(line))
-    if len(groups) == 1:
+    lhs, assignment, rhs = split_assignment_line(line)
+    if not assignment:
         # So sad, too bad
         return line
 
-    counts = list(count(x) for x in groups)
     didwrap = False
 
     # If the LHS is large, wrap it first
-    if sum(counts[:-1]) >= maxline - indent - 4:
-        for group in groups[:-1]:
+    if sum(count(x) for x in lhs) >= maxline - indent - 4:
+        for group in lhs:
             didwrap = False  # Only want to know about last group
             if len(group) > 1:
                 group.insert(0, '(')
@@ -248,11 +247,11 @@ def add_parens(line, maxline, indent, statements=statements, count=count):
                 didwrap = True
 
     # Might not need to wrap the RHS if wrapped the LHS
-    if not didwrap or counts[-1] > maxline - indent - 10:
-        groups[-1].insert(0, '(')
-        groups[-1].append(')')
+    if not didwrap or count(rhs[-1]) > maxline - indent - 10:
+        rhs.insert(0, '(')
+        rhs.append(')')
 
-    return [item for group in groups for item in group]
+    return lhs + assignment + rhs
 
 
 # Assignment operators
@@ -260,14 +259,25 @@ ops = list('|^&+-*/%@~') + '<< >> // **'.split() + ['']
 ops = set(' %s= ' % x for x in ops)
 
 
-def get_assign_groups(line, ops=ops):
+def split_assignment_line(line, ops=ops):
     """ Split a line into groups by assignment (including
         augmented assignment)
     """
-    group = []
+    lhs = []
+    assignment = []  # assignment and annotation (if any)
+    rhs = []
+
+    current_level = lhs
+
     for item in line:
-        group.append(item)
-        if item in ops:
-            yield group
-            group = []
-    yield group
+        if item == ': ':  # annotation
+            current_level = assignment
+            current_level.append(item)
+        elif item in ops:
+            assignment.append(item)
+            current_level = rhs
+        else:
+            current_level.append(item)
+
+    return lhs, assignment, rhs
+

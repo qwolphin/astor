@@ -610,6 +610,11 @@ class CodegenTestCase(unittest.TestCase, Comparisons):
         """
         self.assertAstRoundtripsGtVer(source, (3, 6))
 
+    def test_long_annassign(self):
+        long_name = 'a' * 80
+        source = 'a: {} = 3'.format(long_name)
+        self.assertAstRoundtripsGtVer(source, (3, 6))
+
     def test_compile_types(self):
         code = '(a + b + c) * (d + e + f)\n'
         for mode in 'exec eval single'.split():
